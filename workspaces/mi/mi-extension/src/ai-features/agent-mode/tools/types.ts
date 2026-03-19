@@ -132,6 +132,11 @@ export const TASK_OUTPUT_TOOL_NAME = 'task_output';
 export const WEB_SEARCH_TOOL_NAME = 'web_search';
 export const WEB_FETCH_TOOL_NAME = 'web_fetch';
 
+// DeepWiki MCP Tools (raw names from DeepWiki MCP server, used via Anthropic native mcpServers)
+export const DEEPWIKI_READ_WIKI_STRUCTURE_TOOL_NAME = 'read_wiki_structure';
+export const DEEPWIKI_READ_WIKI_CONTENTS_TOOL_NAME = 'read_wiki_contents';
+export const DEEPWIKI_ASK_QUESTION_TOOL_NAME = 'ask_question';
+
 // ============================================================================
 // Subagent Types
 // ============================================================================

@@ -35,6 +35,7 @@ import {
     PendingPlanApproval,
 } from '../../tools/plan_mode_tools';
 import { getRuntimeVersionFromPom } from '../../tools/connector_store_cache';
+import { DEEPWIKI_MCP_TOOL_NAMES, DEEPWIKI_MCP_SERVER_CONFIG } from '../../tools/deepwiki_tools';
 import {
     createAgentTools,
     FILE_WRITE_TOOL_NAME,
@@ -417,7 +418,12 @@ export async function executeAgent(
             abortSignal: streamWatchdog.abortSignal,
             headers: requestHeaders,
             providerOptions: {
-                anthropic: anthropicOptions,
+                anthropic: {
+                    ...anthropicOptions,
+                    // DeepWiki MCP — Anthropic handles MCP calls server-side.
+                    // Tool calls appear in the stream as mcp_tool_use / mcp_tool_result blocks.
+                    mcpServers: [DEEPWIKI_MCP_SERVER_CONFIG],
+                },
             },
             prepareStep,
             onAbort: () => {
@@ -693,6 +699,9 @@ export async function executeAgent(
                             allowed_domains: toolInput?.allowed_domains,
                             blocked_domains: toolInput?.blocked_domains,
                         };
+                    } else if (DEEPWIKI_MCP_TOOL_NAMES.includes(part.toolName)) {
+                        // DeepWiki MCP tools — pass through all input for display
+                        displayInput = toolInput;
                     }
 
                     // Skip tool call UI for todo_write (handled by inline todo list)
