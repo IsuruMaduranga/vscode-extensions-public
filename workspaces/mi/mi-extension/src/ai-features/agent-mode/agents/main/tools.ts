@@ -119,6 +119,7 @@ import {
     WEB_SEARCH_TOOL_NAME,
     WEB_FETCH_TOOL_NAME,
     ShellApprovalRuleStore,
+    DEFERRED_TOOLS,
 } from '../../tools/types';
 import { AgentUndoCheckpointManager } from '../../undo/checkpoint-manager';
 import * as path from 'path';
@@ -151,6 +152,25 @@ export {
     WEB_FETCH_TOOL_NAME,
 };
 import { AgentEventHandler } from './agent';
+
+/**
+ * Deferred tool catalog — injected into the system reminder so the model
+ * knows which additional tools are available via Anthropic tool search.
+ */
+export const DEFERRED_TOOL_CATALOG = `# Additional Tools (available via search)
+The following tools are available but deferred — search for them when needed:
+- glob: Find files by glob pattern, sorted by modification time
+- create_data_mapper: Create a new data mapper with input/output schemas
+- generate_data_mapping: Generate TypeScript field mappings for an existing data mapper
+- server_management: Query/control MI server artifacts (status, query, activate/deactivate, log levels)
+- enter_plan_mode: Enter planning phase for complex implementation tasks
+- exit_plan_mode: Request plan approval from user
+- ask_user_question: Ask user a clarification question with options
+- create_subagent: Spawn Explore or SynapseContext subagent for deep exploration
+- kill_task: Terminate a background shell or subagent task
+- task_output: Get output from a background task
+- web_search: Search the web for external information
+- web_fetch: Fetch and analyze content from a specific URL`;
 
 /**
  * Parameters for creating the tools object
@@ -591,18 +611,19 @@ export function createAgentTools(params: CreateToolsParams) {
         ),
     };
 
-    if (mode === 'edit') {
-        return allTools;
+    // Mark deferred tools with providerOptions for Anthropic native tool search.
+    // Deferred tools are not loaded into context upfront — the model discovers
+    // them on-demand via the tool_search_tool_bm25 server-side tool.
+    for (const [toolName, toolDef] of Object.entries(allTools)) {
+        if (DEFERRED_TOOLS.has(toolName)) {
+            (toolDef as any).providerOptions = {
+                anthropic: { deferLoading: true },
+            };
+        }
     }
 
-    // Keep all tools visible in Plan mode so approved exit_plan_mode can continue
-    // implementation in the same run. Execution restrictions are enforced dynamically.
-    if (mode === 'plan') {
-        return allTools;
-    }
-
-    const visibleToolNames = READ_ONLY_MODE_ALLOWED_TOOLS;
-    return Object.fromEntries(
-        Object.entries(allTools).filter(([toolName]) => visibleToolNames.has(toolName))
-    );
+    // All modes return the same tools. Mode restrictions (Ask = read-only,
+    // Plan = plan-file-only mutations) are enforced at execution level by
+    // getModeAwareExecute(), not by filtering the tool set.
+    return allTools;
 }

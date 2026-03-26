@@ -247,6 +247,14 @@ export function getToolAction(toolName: string, toolResult?: any, toolInput?: an
                 failed: 'web fetch failed'
             };
 
+        // Tool Search (Anthropic native — deferred tool discovery)
+        case 'tool_search':
+            return {
+                loading: 'discovering tools',
+                completed: 'discovered tools',
+                failed: 'tool discovery failed'
+            };
+
         case DEEPWIKI_READ_WIKI_STRUCTURE_TOOL_NAME:
             return {
                 loading: 'reading wiki structure',

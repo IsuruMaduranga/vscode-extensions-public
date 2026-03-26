@@ -21,10 +21,11 @@
 // ============================================================================
 const ENABLE_LANGFUSE = false; // Set to false to disable Langfuse tracing
 const ENABLE_DEVTOOLS = false; // Set to true to enable AI SDK DevTools (local development only!)
+const ENABLE_TOOL_SEARCH = true; // Set to false to disable Anthropic native tool search (loads all tools upfront)
 
 import { ModelMessage, streamText, stepCountIs, UserModelMessage, SystemModelMessage, wrapLanguageModel } from 'ai';
 import { AnthropicProviderOptions } from '@ai-sdk/anthropic';
-import { getAnthropicClient, getAnthropicClientForCustomModel, AnthropicModel, resolveMainModelId } from '../../../connection';
+import { getAnthropicClient, getAnthropicClientForCustomModel, getAnthropicProvider, AnthropicModel, resolveMainModelId } from '../../../connection';
 import { getSystemPrompt } from '../main/system';
 import { getUserPrompt, UserPromptParams } from './prompt';
 import { addCacheControlToMessages } from '../../../cache-utils';
@@ -361,6 +362,18 @@ export async function executeAgent(
             modelSettings: request.modelSettings,
         });
 
+        // Add Anthropic native tool search for deferred tool discovery.
+        // When enabled, deferred tools (marked with deferLoading in createAgentTools)
+        // are discovered on-demand via BM25 search, reducing context window usage.
+        let finalTools: any = tools;
+        if (ENABLE_TOOL_SEARCH) {
+            const anthropicProvider = await getAnthropicProvider();
+            finalTools = {
+                ...tools,
+                tool_search: anthropicProvider.tools.toolSearchBm25_20251119(),
+            };
+        }
+
         // Track step number for logging
         let currentStepNumber = 0;
 
@@ -414,7 +427,7 @@ export async function executeAgent(
             temperature: request.thinking ? undefined : 0,
             messages: allMessages,
             stopWhen: stepCountIs(50),
-            tools,
+            tools: finalTools,
             abortSignal: streamWatchdog.abortSignal,
             headers: requestHeaders,
             providerOptions: {

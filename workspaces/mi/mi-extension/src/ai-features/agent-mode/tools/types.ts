@@ -132,6 +132,25 @@ export const TASK_OUTPUT_TOOL_NAME = 'task_output';
 export const WEB_SEARCH_TOOL_NAME = 'web_search';
 export const WEB_FETCH_TOOL_NAME = 'web_fetch';
 
+// ============================================================================
+// Deferred Tools — loaded on-demand via Anthropic native tool search
+// ============================================================================
+
+export const DEFERRED_TOOLS = new Set<string>([
+    FILE_GLOB_TOOL_NAME,
+    CREATE_DATA_MAPPER_TOOL_NAME,
+    GENERATE_DATA_MAPPING_TOOL_NAME,
+    SERVER_MANAGEMENT_TOOL_NAME,
+    ENTER_PLAN_MODE_TOOL_NAME,
+    EXIT_PLAN_MODE_TOOL_NAME,
+    ASK_USER_TOOL_NAME,
+    SUBAGENT_TOOL_NAME,
+    KILL_TASK_TOOL_NAME,
+    TASK_OUTPUT_TOOL_NAME,
+    WEB_SEARCH_TOOL_NAME,
+    WEB_FETCH_TOOL_NAME,
+]);
+
 // DeepWiki MCP Tools (raw names from DeepWiki MCP server, used via Anthropic native mcpServers)
 export const DEEPWIKI_READ_WIKI_STRUCTURE_TOOL_NAME = 'read_wiki_structure';
 export const DEEPWIKI_READ_WIKI_CONTENTS_TOOL_NAME = 'read_wiki_contents';

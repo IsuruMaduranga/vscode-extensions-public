@@ -739,12 +739,18 @@ export function createWriteExecute(
                 };
             }
             if (existingContent.trim().length > 0) {
-                console.error(`[FileWriteTool] File already exists with content: ${file_path}`);
-                return {
-                    success: false,
-                    message: `File '${file_path}' already exists with content. Use ${FILE_EDIT_TOOL_NAME} to modify it instead.`,
-                    error: `Error: ${ErrorMessages.FILE_ALREADY_EXISTS}`
-                };
+                // Allow overwrite if the agent created this file in the current session
+                const isAgentCreated = modifiedFiles?.includes(file_path)
+                    || modifiedFiles?.includes(fullPath);
+                if (!isAgentCreated) {
+                    console.error(`[FileWriteTool] File already exists with content: ${file_path}`);
+                    return {
+                        success: false,
+                        message: `File '${file_path}' already exists with content. Use ${FILE_EDIT_TOOL_NAME} to modify it instead.`,
+                        error: `Error: ${ErrorMessages.FILE_ALREADY_EXISTS}`
+                    };
+                }
+                console.log(`[FileWriteTool] Overwriting agent-created file: ${file_path}`);
             }
         }
 

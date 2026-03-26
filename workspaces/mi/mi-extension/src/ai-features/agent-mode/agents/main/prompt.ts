@@ -28,6 +28,7 @@ import { getServerPathFromConfig } from '../../../../util/onboardingUtils';
 import { AgentMode } from '@wso2/mi-core';
 import { getModeReminder } from './mode';
 import { buildSystemReminder } from './prompt_system_reminder';
+import { DEFERRED_TOOL_CATALOG } from './tools';
 
 const MAX_PROJECT_STRUCTURE_FILES = 50;
 const MAX_PROJECT_STRUCTURE_CHARS = 10000;
@@ -293,7 +294,7 @@ export async function getUserPrompt(params: UserPromptParams): Promise<string> {
         env_mi_runtime_version: runtimeVersion || 'unknown',
         env_mi_runtime_home_path: runtimePaths.runtimeHomePath,
         env_mi_runtime_carbon_log_path: runtimePaths.carbonLogPath,
-        system_reminder: buildSystemReminder(mode, modeReminder),
+        system_reminder: buildSystemReminder(mode, modeReminder, DEFERRED_TOOL_CATALOG),
     };
 
     // Render the template

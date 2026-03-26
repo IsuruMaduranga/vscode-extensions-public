@@ -18,11 +18,14 @@
 
 import { AgentMode } from '@wso2/mi-core';
 
-export function buildSystemReminder(mode: AgentMode, modeReminder: string): string {
+export function buildSystemReminder(mode: AgentMode, modeReminder: string, deferredToolCatalog?: string): string {
     const sections: string[] = [];
     sections.push(`<mode>\n${mode.toUpperCase()}\n</mode>`);
     if (modeReminder.trim().length > 0) {
         sections.push(modeReminder);
+    }
+    if (deferredToolCatalog?.trim()) {
+        sections.push(deferredToolCatalog);
     }
     return sections.join('\n');
 }
