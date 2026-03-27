@@ -161,10 +161,8 @@ export const DEFERRED_TOOLS = new Set<string>([
     WEB_FETCH_TOOL_NAME,
 ]);
 
-// DeepWiki MCP Tools (raw names from DeepWiki MCP server, used via Anthropic native mcpServers)
-export const DEEPWIKI_READ_WIKI_STRUCTURE_TOOL_NAME = 'read_wiki_structure';
-export const DEEPWIKI_READ_WIKI_CONTENTS_TOOL_NAME = 'read_wiki_contents';
-export const DEEPWIKI_ASK_QUESTION_TOOL_NAME = 'ask_question';
+// DeepWiki MCP Tool (Anthropic prefixes with server name: deepwiki_ask_question)
+export const DEEPWIKI_ASK_QUESTION_TOOL_NAME = 'deepwiki_ask_question';
 
 // ============================================================================
 // Subagent Types

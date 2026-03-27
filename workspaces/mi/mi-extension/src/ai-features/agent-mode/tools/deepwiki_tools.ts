@@ -32,15 +32,19 @@ export const DEEPWIKI_MCP_SERVER_CONFIG = {
     type: 'url' as const,
     name: 'deepwiki',
     url: 'https://mcp.deepwiki.com/mcp',
-    toolConfiguration: { enabled: true },
+    toolConfiguration: {
+        enabled: true,
+        // Only expose ask_question — read_wiki_contents dumps the entire wiki (too large),
+        // and read_wiki_structure is low value (agent can just ask questions directly).
+        allowedTools: ['ask_question'],
+    },
 };
 
 /**
- * Raw MCP tool names as exposed by the DeepWiki MCP server.
- * These appear in the stream as mcp_tool_use blocks with these names.
+ * Tool names as they appear in the stream.
+ * Anthropic's MCP integration prefixes with "{server_name}_", so
+ * deepwiki server + ask_question = deepwiki_ask_question.
  */
 export const DEEPWIKI_MCP_TOOL_NAMES = [
-    'read_wiki_structure',
-    'read_wiki_contents',
-    'ask_question',
+    'deepwiki_ask_question',
 ];
