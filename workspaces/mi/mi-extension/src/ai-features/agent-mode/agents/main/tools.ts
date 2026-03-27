@@ -306,42 +306,39 @@ function isPathWithin(basePath: string, targetPath: string): boolean {
     return normalizedTarget === normalizedBase || normalizedTarget.startsWith(`${normalizedBase}/`);
 }
 
-function createPlanModePlanFileOnlyExecute<T extends (...args: any[]) => Promise<ToolResult>>(
-    execute: T,
+function validatePlanModePlanFileOnlyToolArgs(
     toolName: string,
     projectPath: string,
-    sessionId: string
-): T {
+    sessionId: string,
+    toolArgs: unknown
+): ToolResult | null {
     const planDir = path.join(getCopilotSessionDir(projectPath, sessionId), 'plan');
     const planDirDisplayPath = planDir.replace(/\\/g, '/');
+    const parsedArgs = toolArgs as { file_path?: unknown } | undefined;
+    const filePathArg = typeof parsedArgs?.file_path === 'string' ? parsedArgs.file_path.trim() : '';
+    if (!filePathArg) {
+        return {
+            success: false,
+            message: `Tool '${toolName}' in Plan mode requires a valid file_path for the assigned plan file.`,
+            error: 'PLAN_MODE_RESTRICTED',
+        };
+    }
 
-    return (async (...args: Parameters<T>): Promise<ToolResult> => {
-        const toolArgs = args[0] as { file_path?: unknown } | undefined;
-        const filePathArg = typeof toolArgs?.file_path === 'string' ? toolArgs.file_path.trim() : '';
-        if (!filePathArg) {
-            return {
-                success: false,
-                message: `Tool '${toolName}' in Plan mode requires a valid file_path for the assigned plan file.`,
-                error: 'PLAN_MODE_RESTRICTED',
-            };
-        }
+    const fullPath = path.isAbsolute(filePathArg)
+        ? path.resolve(filePathArg)
+        : path.resolve(projectPath, filePathArg);
+    const isMarkdown = path.extname(fullPath).toLowerCase() === '.md';
+    const isInPlanDir = isPathWithin(planDir, fullPath);
 
-        const fullPath = path.isAbsolute(filePathArg)
-            ? path.resolve(filePathArg)
-            : path.resolve(projectPath, filePathArg);
-        const isMarkdown = path.extname(fullPath).toLowerCase() === '.md';
-        const isInPlanDir = isPathWithin(planDir, fullPath);
+    if (!isMarkdown || !isInPlanDir) {
+        return {
+            success: false,
+            message: `Tool '${toolName}' is restricted in Plan mode. You may only modify the plan file under ${planDirDisplayPath}.`,
+            error: 'PLAN_MODE_RESTRICTED',
+        };
+    }
 
-        if (!isMarkdown || !isInPlanDir) {
-            return {
-                success: false,
-                message: `Tool '${toolName}' is restricted in Plan mode. You may only modify the plan file under ${planDirDisplayPath}.`,
-                error: 'PLAN_MODE_RESTRICTED',
-            };
-        }
-
-        return execute(...args);
-    }) as T;
+    return null;
 }
 
 function normalizePlanShellCommandName(commandToken: string): string {
@@ -388,119 +385,104 @@ function getPlanModeShellRestrictionReason(command: string, projectPath: string)
 
 const SERVER_MANAGEMENT_READ_ONLY_ACTIONS = new Set(['status', 'query']);
 
-function createReadOnlyServerManagementExecute(execute: ServerManagementExecuteFn): ServerManagementExecuteFn {
-    return async (args) => {
-        if (!SERVER_MANAGEMENT_READ_ONLY_ACTIONS.has(args.action)) {
-            return {
-                success: false,
-                message: `Action '${args.action}' is not allowed in Ask/Plan mode. Only 'status' and 'query' actions are available. Switch to Edit mode to use '${args.action}'.`,
-                error: 'ASK_MODE_RESTRICTED',
-            };
-        }
-        return execute(args);
+function validateReadOnlyServerManagementArgs(
+    toolArgs: unknown,
+    mode: AgentMode
+): ToolResult | null {
+    const args = toolArgs as Parameters<ServerManagementExecuteFn>[0];
+    if (!SERVER_MANAGEMENT_READ_ONLY_ACTIONS.has(args.action)) {
+        return {
+            success: false,
+            message: `Action '${args.action}' is not allowed in Ask/Plan mode. Only 'status' and 'query' actions are available. Switch to Edit mode to use '${args.action}'.`,
+            error: mode === 'plan' ? 'PLAN_MODE_RESTRICTED' : 'ASK_MODE_RESTRICTED',
+        };
+    }
+
+    return null;
+}
+
+function validatePlanModeReadOnlyBashArgs(
+    toolArgs: unknown,
+    projectPath: string
+): ToolResult | null {
+    const args = toolArgs as Parameters<BashExecuteFn>[0];
+    const restrictionReason = getPlanModeShellRestrictionReason(args.command, projectPath);
+    if (!restrictionReason) {
+        return null;
+    }
+
+    return {
+        success: false,
+        message: `${restrictionReason} Use read-only commands like ls, cat, grep, rg, find, git status, or git diff.`,
+        error: 'PLAN_MODE_RESTRICTED',
     };
 }
 
-function createPlanModeReadOnlyBashExecute(execute: BashExecuteFn, projectPath: string): BashExecuteFn {
-    return async (args) => {
-        const restrictionReason = getPlanModeShellRestrictionReason(args.command, projectPath);
-        if (restrictionReason) {
-            return {
-                success: false,
-                message: `${restrictionReason} Use read-only commands like ls, cat, grep, rg, find, git status, or git diff.`,
-                error: 'PLAN_MODE_RESTRICTED',
-            };
-        }
-
-        return execute(args);
-    };
+interface ToolExecutionPipelineOptions {
+    mode: AgentMode;
+    toolName: string;
+    projectPath: string;
+    sessionId: string;
+    sessionDir: string;
+    persistResult: boolean;
 }
 
-function getModeAwareExecute<T extends (...args: any[]) => Promise<ToolResult>>(
-    mode: AgentMode,
-    toolName: string,
-    execute: T,
-    options?: { projectPath: string; sessionId: string }
-): T {
+async function evaluateModeRestriction(
+    options: Pick<ToolExecutionPipelineOptions, 'mode' | 'toolName' | 'projectPath' | 'sessionId'>,
+    toolArgs: unknown
+): Promise<ToolResult | null> {
+    const { mode, toolName, projectPath, sessionId } = options;
     if (mode === 'edit') {
-        return execute;
+        return null;
     }
 
     const blockedExecute = createModeBlockedExecute(toolName, mode);
-    const planFileOnlyExecute = mode === 'plan'
-        && options
-        && (toolName === FILE_WRITE_TOOL_NAME || toolName === FILE_EDIT_TOOL_NAME)
-        ? createPlanModePlanFileOnlyExecute(
-            execute,
-            toolName,
-            options.projectPath,
-            options.sessionId
-        )
-        : undefined;
-    const planReadOnlyBashExecute = mode === 'plan' && toolName === BASH_TOOL_NAME
-        && options
-        ? createPlanModeReadOnlyBashExecute(execute as unknown as BashExecuteFn, options.projectPath)
-        : undefined;
-    const readOnlyServerManagementExecute = (mode === 'ask' || mode === 'plan') && toolName === SERVER_MANAGEMENT_TOOL_NAME
-        ? createReadOnlyServerManagementExecute(execute as unknown as ServerManagementExecuteFn)
-        : undefined;
-
-    return (async (...args: Parameters<T>): Promise<ToolResult> => {
-        const modeSnapshot = {
-            mode,
-            planRestrictionsActive: mode === 'plan'
-                ? (options ? isPlanModeSessionActive(options.sessionId) : true)
-                : false,
-        };
-
-        if (modeSnapshot.mode === 'plan') {
-            // Fail closed: once a run starts in plan mode, do not auto-escalate tool permissions
-            // within the same run based on mutable session state.
-            if (!modeSnapshot.planRestrictionsActive) {
-                return {
-                    success: false,
-                    message: 'Plan mode state changed during this run. Send a new Edit mode message after exiting plan mode to run unrestricted tools.',
-                    error: 'PLAN_MODE_TRANSITION_PENDING',
-                };
-            }
-
-            if (planFileOnlyExecute) {
-                return planFileOnlyExecute(...args);
-            }
-
-            if (planReadOnlyBashExecute) {
-                return planReadOnlyBashExecute(args[0] as Parameters<BashExecuteFn>[0]);
-            }
-
-            if (readOnlyServerManagementExecute) {
-                return readOnlyServerManagementExecute(args[0] as Parameters<ServerManagementExecuteFn>[0]);
-            }
-
-            if (PLAN_MODE_ALLOWED_TOOLS.has(toolName)) {
-                return execute(...args);
-            }
-
-            return blockedExecute(args[0]);
+    if (mode === 'plan') {
+        // Fail closed: once a run starts in plan mode, do not auto-escalate tool permissions
+        // within the same run based on mutable session state.
+        if (!isPlanModeSessionActive(sessionId)) {
+            return {
+                success: false,
+                message: 'Plan mode state changed during this run. Send a new Edit mode message after exiting plan mode to run unrestricted tools.',
+                error: 'PLAN_MODE_TRANSITION_PENDING',
+            };
         }
 
-        if (readOnlyServerManagementExecute) {
-            return readOnlyServerManagementExecute(args[0] as Parameters<ServerManagementExecuteFn>[0]);
+        if (toolName === FILE_WRITE_TOOL_NAME || toolName === FILE_EDIT_TOOL_NAME) {
+            return validatePlanModePlanFileOnlyToolArgs(toolName, projectPath, sessionId, toolArgs);
         }
 
-        if (READ_ONLY_MODE_ALLOWED_TOOLS.has(toolName)) {
-            return execute(...args);
+        if (toolName === BASH_TOOL_NAME) {
+            return validatePlanModeReadOnlyBashArgs(toolArgs, projectPath);
         }
 
-        return blockedExecute(args[0]);
-    }) as T;
+        if (toolName === SERVER_MANAGEMENT_TOOL_NAME) {
+            return validateReadOnlyServerManagementArgs(toolArgs, mode);
+        }
+
+        if (PLAN_MODE_ALLOWED_TOOLS.has(toolName)) {
+            return null;
+        }
+
+        return blockedExecute(toolArgs);
+    }
+
+    if (toolName === SERVER_MANAGEMENT_TOOL_NAME) {
+        return validateReadOnlyServerManagementArgs(toolArgs, mode);
+    }
+
+    if (READ_ONLY_MODE_ALLOWED_TOOLS.has(toolName)) {
+        return null;
+    }
+
+    return blockedExecute(toolArgs);
 }
 
-function withPersistedToolResult<T extends (...args: any[]) => Promise<ToolResult>>(
-    toolName: string,
-    sessionDir: string,
+function createToolExecutionPipeline<T extends (...args: any[]) => Promise<ToolResult>>(
     execute: T,
-    sessionId: string
+    options: ToolExecutionPipelineOptions
 ): T {
+    const { toolName, sessionDir, sessionId, persistResult } = options;
     const normalizeToolResult = (
         result: unknown,
         stage: 'execute' | 'persist'
@@ -525,7 +507,24 @@ function withPersistedToolResult<T extends (...args: any[]) => Promise<ToolResul
     };
 
     return (async (...args: Parameters<T>): Promise<ToolResult> => {
+        const modeRestriction = await evaluateModeRestriction(
+            {
+                mode: options.mode,
+                toolName,
+                projectPath: options.projectPath,
+                sessionId: options.sessionId,
+            },
+            args[0]
+        );
+        if (modeRestriction) {
+            return modeRestriction;
+        }
+
         const result = normalizeToolResult(await execute(...args), 'execute');
+        if (!persistResult) {
+            return result;
+        }
+
         const processed = await persistOversizedToolResult({
             sessionDir,
             toolName,
@@ -577,12 +576,18 @@ export function createAgentTools(params: CreateToolsParams) {
 
     const getWrappedExecute = <T extends (...args: any[]) => Promise<ToolResult>>(
         toolName: string,
-        execute: T
-    ): T => withPersistedToolResult(
-        toolName,
-        sessionDir,
-        getModeAwareExecute(mode, toolName, execute, { projectPath, sessionId }),
-        sessionId
+        execute: T,
+        persistResult = true
+    ): T => createToolExecutionPipeline(
+        execute,
+        {
+            mode,
+            toolName,
+            projectPath,
+            sessionId,
+            sessionDir,
+            persistResult,
+        }
     );
 
     const allTools = {
@@ -609,7 +614,7 @@ export function createAgentTools(params: CreateToolsParams) {
             getWrappedExecute(CONNECTOR_TOOL_NAME, createConnectorExecute(projectPath))
         ),
         [CONTEXT_TOOL_NAME]: createContextTool(
-            getModeAwareExecute(mode, CONTEXT_TOOL_NAME, createContextExecute(projectPath), { projectPath, sessionId })
+            getWrappedExecute(CONTEXT_TOOL_NAME, createContextExecute(projectPath), false)
         ),
 
         // Project Tools (1 tool)
@@ -717,6 +722,6 @@ export function createAgentTools(params: CreateToolsParams) {
 
     // All modes return the same tools. Mode restrictions (Ask = read-only,
     // Plan = plan-file-only mutations) are enforced at execution level by
-    // getModeAwareExecute(), not by filtering the tool set.
+    // the execution pipeline, not by filtering the tool set.
     return allTools;
 }
