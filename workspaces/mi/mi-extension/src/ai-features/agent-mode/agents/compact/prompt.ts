@@ -110,15 +110,15 @@ Here's an example of how your output should be structured:
 </summary>`;
 
 export const COMPACT_SYSTEM_REMINDER_USER_TRIGGERED = `
-<system_reminder>
+<system-reminder>
 The user has triggered a /compact command to summarize this conversation to reduce token usage and reduce the context window.
 ${PROMPT}
-</system_reminder>
+</system-reminder>
 `;
 
 export const COMPACT_SYSTEM_REMINDER_AUTO_TRIGGERED = `
-<system_reminder>
+<system-reminder>
 The conversation context window is running out. You must summarize the conversation immediately so that work can continue in a fresh context.
 ${PROMPT}
-</system_reminder>
+</system-reminder>
 `;
