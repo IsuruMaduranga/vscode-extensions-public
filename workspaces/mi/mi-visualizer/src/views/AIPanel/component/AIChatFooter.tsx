@@ -393,6 +393,41 @@ const AIChatFooter: React.FC<AIChatFooterProps> = ({ isUsageExceeded = false }) 
 
     // Manual compact state
     const [isCompacting, setIsCompacting] = useState(false);
+
+    // AGENTS.md truncation status — surfaces a yellow footer warning when the
+    // file at the project root exceeds the agent's size cap and was truncated
+    // before being injected. Refetched on mount, on session switch, and after
+    // each agent turn finishes (the agent — or the user — may have edited
+    // AGENTS.md since the last read).
+    const [agentsMdTruncationInfo, setAgentsMdTruncationInfo] = useState<{
+        truncated: boolean;
+        originalBytes: number;
+        maxBytes: number;
+    } | null>(null);
+    useEffect(() => {
+        if (!rpcClient) {
+            return;
+        }
+        let cancelled = false;
+        rpcClient.getMiAgentPanelRpcClient().getAgentsMdStatus()
+            .then((status) => {
+                if (cancelled) {
+                    return;
+                }
+                setAgentsMdTruncationInfo({
+                    truncated: status.truncated,
+                    originalBytes: status.originalBytes,
+                    maxBytes: status.maxBytes,
+                });
+            })
+            .catch(() => {
+                // Best-effort — a missing/unreadable AGENTS.md is not an error
+                // condition and the footer simply won't show the warning.
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [rpcClient, currentSessionId, backendRequestTriggered]);
     // Placeholder frame animation removed — replaced by "Generating.." indicator
     const [mentionContext, setMentionContext] = useState<MentionContext | null>(null);
     const [mentionSuggestions, setMentionSuggestions] = useState<MentionablePathItem[]>([]);
@@ -2914,6 +2949,11 @@ const AIChatFooter: React.FC<AIChatFooterProps> = ({ isUsageExceeded = false }) 
                 />
             </FloatingInputContainer>
 
+            {agentsMdTruncationInfo?.truncated && (
+                <p style={{ fontSize: "10px", color: "var(--vscode-editorWarning-foreground, #d4a017)", margin: "0", padding: "0 16px 4px 16px", lineHeight: 1.2, textAlign: "center", width: "100%" }}>
+                    AGENTS.md is too large ({agentsMdTruncationInfo.originalBytes.toLocaleString()} bytes). Only the first {agentsMdTruncationInfo.maxBytes.toLocaleString()} bytes are sent to the agent — trim it to keep all instructions in context.
+                </p>
+            )}
             <p style={{ fontSize: "10px", color: "var(--vscode-descriptionForeground)", opacity: 0.6, margin: "0", padding: "0 16px 8px 16px", lineHeight: 1.2, textAlign: "center", width: "100%" }}>
                 AI-generated output may contain mistakes. Review before adding to your integration.
             </p>

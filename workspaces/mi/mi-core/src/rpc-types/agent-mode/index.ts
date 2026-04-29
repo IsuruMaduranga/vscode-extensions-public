@@ -88,6 +88,8 @@ export {
     searchMentionablePaths,
     // Run status RPC
     getAgentRunStatus,
+    // AGENTS.md status RPC (footer warning)
+    getAgentsMdStatus,
 } from './rpc-type';
 
 // Export RPC request/response types

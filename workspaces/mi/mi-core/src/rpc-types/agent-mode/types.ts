@@ -441,6 +441,8 @@ export interface SessionContextBlocksState {
     modePolicy?: string;
     /** sha256-16 of the canonicalized preconfigured-payloads JSON */
     payloads?: string;
+    /** sha256-16 of the AGENTS.md file content at the project root (undefined when the file does not exist) */
+    agentsMd?: string;
 }
 
 /**
@@ -592,6 +594,21 @@ export interface GetAgentRunStatusResponse {
 }
 
 /**
+ * Status read for `<projectPath>/AGENTS.md`. Used by the AI Panel footer to
+ * render a truncation warning before the next agent turn would surface it.
+ */
+export interface GetAgentsMdStatusResponse {
+    /** True when AGENTS.md exists at the project root. */
+    exists: boolean;
+    /** True when the file exceeds {@link maxBytes} and was truncated for the agent. */
+    truncated: boolean;
+    /** Original byte length of the file (0 when `exists === false`). */
+    originalBytes: number;
+    /** Cap the agent applies before truncation. */
+    maxBytes: number;
+}
+
+/**
  * Agent Panel API interface
  */
 export interface MIAgentPanelAPI {
@@ -612,4 +629,6 @@ export interface MIAgentPanelAPI {
     searchMentionablePaths: (request: SearchMentionablePathsRequest) => Promise<SearchMentionablePathsResponse>;
     // Agent run status for panel reconnection
     getAgentRunStatus: (request?: GetAgentRunStatusRequest) => Promise<GetAgentRunStatusResponse>;
+    // AGENTS.md project-level instructions status (UI footer warning)
+    getAgentsMdStatus: () => Promise<GetAgentsMdStatusResponse>;
 }

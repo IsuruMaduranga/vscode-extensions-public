@@ -154,12 +154,23 @@ export interface GetAgentRunStatusResponse {
     mode?: AgentMode;
 }
 
+export interface GetAgentsMdStatusResponse {
+    exists: boolean;
+    truncated: boolean;
+    originalBytes: number;
+    maxBytes: number;
+}
+
 const searchMentionablePaths: RequestType<SearchMentionablePathsRequest, SearchMentionablePathsResponse> = {
     method: `${_prefix}/searchMentionablePaths`
 };
 
 const getAgentRunStatus: RequestType<GetAgentRunStatusRequest, GetAgentRunStatusResponse> = {
     method: `${_prefix}/getAgentRunStatus`
+};
+
+const getAgentsMdStatus: RequestType<void, GetAgentsMdStatusResponse> = {
+    method: `${_prefix}/getAgentsMdStatus`
 };
 
 // Re-export types from @wso2/mi-core
@@ -231,6 +242,10 @@ export class MiAgentPanelRpcClient implements MIAgentPanelAPI {
 
     getAgentRunStatus(request: GetAgentRunStatusRequest = {}): Promise<GetAgentRunStatusResponse> {
         return this._messenger.sendRequest(getAgentRunStatus, HOST_EXTENSION, request);
+    }
+
+    getAgentsMdStatus(): Promise<GetAgentsMdStatusResponse> {
+        return this._messenger.sendRequest(getAgentsMdStatus, HOST_EXTENSION);
     }
 
 }

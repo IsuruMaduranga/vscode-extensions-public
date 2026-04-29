@@ -78,6 +78,7 @@ export interface SessionContextBlocksState {
     /** Verbatim mode name (`"ask" | "edit" | "plan"`) for "[mode changed from EDIT]" notices. */
     modePolicy?: string;
     payloads?: string;
+    agentsMd?: string;
 }
 
 export const TOOL_USE_INTERRUPTION_CONTEXT = `<system-reminder>The user interrupted while a tool was running. The tool use was rejected and any pending mutations were NOT applied. Stop immediately and wait for the user's next message.</system-reminder>`;

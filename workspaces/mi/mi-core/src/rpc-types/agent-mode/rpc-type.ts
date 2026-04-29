@@ -40,6 +40,7 @@ import {
     SearchMentionablePathsResponse,
     GetAgentRunStatusRequest,
     GetAgentRunStatusResponse,
+    GetAgentsMdStatusResponse,
 } from "./types";
 
 const _prefix = "mi-agent-service";
@@ -128,4 +129,9 @@ export const searchMentionablePaths: RequestType<SearchMentionablePathsRequest, 
 // Get current agent run status and buffered events for panel reconnection
 export const getAgentRunStatus: RequestType<GetAgentRunStatusRequest, GetAgentRunStatusResponse> = {
     method: `${_prefix}/getAgentRunStatus`
+};
+
+// Get AGENTS.md status for the AI Panel footer truncation warning
+export const getAgentsMdStatus: RequestType<void, GetAgentsMdStatusResponse> = {
+    method: `${_prefix}/getAgentsMdStatus`
 };

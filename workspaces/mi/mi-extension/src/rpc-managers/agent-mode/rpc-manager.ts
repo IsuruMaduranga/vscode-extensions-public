@@ -44,6 +44,7 @@ import {
     SearchMentionablePathsResponse,
     GetAgentRunStatusRequest,
     GetAgentRunStatusResponse,
+    GetAgentsMdStatusResponse,
     ModelSettings,
 } from '@wso2/mi-core';
 import * as crypto from 'crypto';
@@ -54,6 +55,7 @@ import * as vscode from 'vscode';
 import { AgentEventHandler } from './event-handler';
 import { executeAgent, createAgentAbortController, AgentEvent } from '../../ai-features/agent-mode';
 import { isToolInterruptionAbortError } from '../../ai-features/agent-mode/agents/main/agent';
+import { getAgentsMdStatus as getAgentsMdStatusFromPrompt } from '../../ai-features/agent-mode/agents/main/prompt';
 import { logInfo, logError, logDebug } from '../../ai-features/copilot/logger';
 import {
     ChatHistoryManager,
@@ -1197,6 +1199,15 @@ export class MIAgentPanelRpcManager implements MIAgentPanelAPI {
             ...status,
             mode: this.currentMode,
         };
+    }
+
+    /**
+     * Read AGENTS.md status from the project root. Used by the AI Panel
+     * footer to surface a truncation warning before the next agent turn
+     * would inject the (truncated) file content.
+     */
+    async getAgentsMdStatus(): Promise<GetAgentsMdStatusResponse> {
+        return getAgentsMdStatusFromPrompt(this.projectUri);
     }
 
     // ============================================================================

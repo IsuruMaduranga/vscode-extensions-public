@@ -38,6 +38,7 @@ import {
     deleteSession,
     searchMentionablePaths,
     getAgentRunStatus,
+    getAgentsMdStatus,
     ListSessionsRequest,
     SwitchSessionRequest,
     CreateNewSessionRequest,
@@ -71,6 +72,7 @@ export function registerMIAgentPanelRpcHandlers(messenger: MessengerAPI, project
     messenger.onRequest(abortAgentGeneration, () => rpcManager.abortAgentGeneration());
     messenger.onRequest(loadChatHistory, (request: LoadChatHistoryRequest) => rpcManager.loadChatHistory(request));
     messenger.onRequest(getAgentRunStatus, (request) => rpcManager.getAgentRunStatus(request));
+    messenger.onRequest(getAgentsMdStatus, () => rpcManager.getAgentsMdStatus());
     messenger.onRequest(undoLastCheckpoint, (request: UndoLastCheckpointRequest) => rpcManager.undoLastCheckpoint(request));
     messenger.onRequest(
         applyCodeSegmentWithCheckpoint,
