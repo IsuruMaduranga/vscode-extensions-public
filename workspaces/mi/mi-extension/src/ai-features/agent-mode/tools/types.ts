@@ -147,6 +147,9 @@ export const READ_SERVER_LOGS_TOOL_NAME = 'read_server_logs';
 // Tool Loading (local — replaces Anthropic native tool_search)
 export const TOOL_LOAD_TOOL_NAME = 'load_tools';
 
+// Skill Tools (load named skill instructions on demand)
+export const INVOKE_SKILL_TOOL_NAME = 'invoke_skill';
+
 // ============================================================================
 // Deferred Tools — hidden from initial prompt, loaded on-demand via tool_search
 // ============================================================================

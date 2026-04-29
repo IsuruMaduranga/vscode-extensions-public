@@ -30,6 +30,7 @@ import { AgentMode, LoginMethod } from '@wso2/mi-core';
 import { getModeBriefNote, getModeReminder } from './mode';
 import { logDebug } from '../../../copilot/logger';
 import { getStateMachine } from '../../../../stateMachine';
+import { getSkillsCatalogText } from '../../skills';
 
 const MAX_PROJECT_STRUCTURE_FILES = 50;
 const MAX_PROJECT_STRUCTURE_CHARS = 10000;
@@ -93,6 +94,12 @@ export const PROMPT_TEMPLATE = `
 {{#if agents_md_block}}
 <system-reminder>
 {{{agents_md_block}}}
+</system-reminder>
+{{/if}}
+
+{{#if skills_block}}
+<system-reminder>
+{{{skills_block}}}
 </system-reminder>
 {{/if}}
 
@@ -186,6 +193,7 @@ export interface BlockInjectionStatuses {
     modePolicy: BlockInjectionStatus;
     payloads: BlockInjectionStatus;
     agentsMd: BlockInjectionStatus;
+    skills: BlockInjectionStatus;
 }
 
 /**
@@ -482,6 +490,16 @@ export interface SessionContextSnapshot {
      * every turn's user prompt.
      */
     agentsMd: AgentsMdContent | undefined;
+    /**
+     * Catalog of available skills (one `- name: description` line per skill).
+     * Empty string when no skills are registered, in which case the block is
+     * omitted entirely. Currently static (compiled-in) so the hash is
+     * effectively constant across the process lifetime — but plumbed through
+     * the per-block hash infrastructure for consistency with the other
+     * tracked blocks and forward compatibility if skills ever become
+     * dynamic.
+     */
+    skillsCatalog: string;
 }
 
 /**
@@ -545,6 +563,8 @@ export interface SessionContextBlockHashes {
     payloads: string | undefined;
     /** sha256-16 over the AGENTS.md content (or `undefined` when the file is missing). */
     agentsMd: string | undefined;
+    /** sha256-16 over the skills catalog text (`undefined` when no skills registered). */
+    skills: string | undefined;
 }
 
 /**
@@ -687,6 +707,7 @@ async function buildSessionContextSnapshot(params: SessionContextParams): Promis
             mode: params.mode || 'edit',
             tryoutPayloads: scanTryoutPayloads(params.projectPath),
             agentsMd: scanAgentsMd(params.projectPath),
+            skillsCatalog: getSkillsCatalogText(),
         },
         catalogWarnings: catalog.warnings,
         catalogStoreStatus: catalog.storeStatus,
@@ -737,6 +758,13 @@ function deriveBlockHashes(snapshot: SessionContextSnapshot): SessionContextBloc
         agentsMd: snapshot.agentsMd
             ? hashJson({ content: snapshot.agentsMd.content, truncated: snapshot.agentsMd.truncated })
             : undefined,
+        // Skills catalog hash. Effectively constant today (skills are
+        // compiled-in), but plumbed through the same drift detection so a
+        // future runtime-loaded catalog Just Works. `undefined` when no
+        // skills are registered so removing the last one fires 'cleared'.
+        skills: snapshot.skillsCatalog.length > 0
+            ? hashJson({ catalog: snapshot.skillsCatalog })
+            : undefined,
     };
 }
 
@@ -785,6 +813,7 @@ const DEFAULT_BLOCK_STATUSES: BlockInjectionStatuses = {
     modePolicy: 'first-injection',
     payloads: 'first-injection',
     agentsMd: 'first-injection',
+    skills: 'first-injection',
 };
 
 function buildEnvBlockText(snapshot: SessionContextSnapshot, status: BlockInjectionStatus): string | undefined {
@@ -939,6 +968,36 @@ The following are project-level agent instructions maintained by the user in <pr
 ${agentsMd.content.trim()}${truncationNotice}`;
 }
 
+/**
+ * Render the available-skills catalog block. Mirrors the Claude Code
+ * session-start "available skills" reminder so the convention is recognizable
+ * to the model. Format matches what `getSkillsCatalogText()` produces:
+ *
+ *   - <name>: <description>
+ *   - <name>: <description>
+ *
+ * Status handling parallels the other tracked blocks. `cleared` fires when
+ * the last skill is removed mid-session (only possible in a future dynamic
+ * catalog), so the model stops trying to invoke names that no longer exist.
+ */
+function buildSkillsBlockText(
+    catalog: string,
+    status: BlockInjectionStatus,
+): string | undefined {
+    if (status === 'cleared') {
+        return `# Available skills [removed]
+No skills are currently registered. Do not call invoke_skill — it has no targets.`;
+    }
+    if (status === 'omit' || catalog.length === 0) {
+        return undefined;
+    }
+    const headerSuffix = status === 're-injection' ? ` ${CONTEXT_UPDATED}` : '';
+    return `# Available skills${headerSuffix}
+Invoke a skill by name with the invoke_skill tool. The tool returns the skill's full instruction body, which you must follow as authoritative guidance for the rest of the turn. Use a skill when the user's request matches its description (or when the user types its name as \`/<skill>\`). Do not invent skill names — only the names listed below are valid.
+
+${catalog}`;
+}
+
 // ============================================================================
 // User Prompt Generation
 // ============================================================================
@@ -998,6 +1057,7 @@ export async function getUserPrompt(params: UserPromptParams): Promise<UserPromp
     const envBlock = buildEnvBlockText(snapshot, blockStatuses.env);
     const connectorsBlock = buildConnectorsBlockText(snapshot, blockStatuses.connectors);
     const agentsMdBlock = buildAgentsMdBlockText(snapshot.agentsMd, blockStatuses.agentsMd);
+    const skillsBlock = buildSkillsBlockText(snapshot.skillsCatalog, blockStatuses.skills);
     const webAvailabilityBlock = buildWebAvailabilityBlockText(snapshot, blockStatuses.webAvailability);
     const payloadsBlock = buildPayloadsBlockText(snapshot.tryoutPayloads, blockStatuses.payloads);
     const fullModePolicyBlock = buildFullModePolicyBlockText(
@@ -1020,6 +1080,7 @@ export async function getUserPrompt(params: UserPromptParams): Promise<UserPromp
         env_block: envBlock,
         connectors_block: connectorsBlock,
         agents_md_block: agentsMdBlock,
+        skills_block: skillsBlock,
         web_availability_block: webAvailabilityBlock,
         payloads_block: payloadsBlock,
         full_mode_policy_block: fullModePolicyBlock,

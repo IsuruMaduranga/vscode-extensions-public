@@ -37,6 +37,10 @@ import {
     createContextExecute,
 } from '../../tools/context_tools';
 import {
+    createInvokeSkillTool,
+    createInvokeSkillExecute,
+} from '../../tools/skill_tools';
+import {
     createManageConnectorTool,
     createManageConnectorExecute,
 } from '../../tools/project_tools';
@@ -134,6 +138,7 @@ import {
     DEEPWIKI_ASK_QUESTION_TOOL_NAME,
     READ_SERVER_LOGS_TOOL_NAME,
     TOOL_LOAD_TOOL_NAME,
+    INVOKE_SKILL_TOOL_NAME,
     ShellApprovalRuleStore,
     DEFERRED_TOOLS,
 } from '../../tools/types';
@@ -657,6 +662,11 @@ export function createAgentTools(params: CreateToolsParams) {
         ),
         [CONTEXT_TOOL_NAME]: createContextTool(
             getWrappedExecute(CONTEXT_TOOL_NAME, createContextExecute(projectPath), false)
+        ),
+
+        // Skill Tools (1 tool) — load named skill instructions on demand
+        [INVOKE_SKILL_TOOL_NAME]: createInvokeSkillTool(
+            getWrappedExecute(INVOKE_SKILL_TOOL_NAME, createInvokeSkillExecute(), false)
         ),
 
         // Project Tools (1 tool)

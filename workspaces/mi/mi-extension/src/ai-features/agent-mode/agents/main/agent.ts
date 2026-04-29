@@ -260,6 +260,7 @@ function buildUpdatedBlocksState(
     apply('modePolicy', statuses.modePolicy, current.modePolicy);
     apply('payloads', statuses.payloads, current.payloads);
     apply('agentsMd', statuses.agentsMd, current.agentsMd);
+    apply('skills', statuses.skills, current.skills);
     return touched ? updated : undefined;
 }
 
@@ -287,6 +288,7 @@ function logBlockInjectionDrift(
     note('mode', statuses.modePolicy, previous.modePolicy, current.modePolicy);
     note('payloads', statuses.payloads, previous.payloads, current.payloads);
     note('agentsMd', statuses.agentsMd, previous.agentsMd, current.agentsMd);
+    note('skills', statuses.skills, previous.skills, current.skills);
     if (driftedBlocks.length > 0) {
         logInfo(`[Agent] Session-context drift — re-injecting: ${driftedBlocks.join(', ')}`);
     }
@@ -622,6 +624,7 @@ export async function executeAgent(
             modePolicy: decideBlockStatus(currentBlockHashes.modePolicy, previousBlocks.modePolicy, forceFirstInjection),
             payloads: decideBlockStatus(currentBlockHashes.payloads, previousBlocks.payloads, forceFirstInjection),
             agentsMd: decideBlockStatus(currentBlockHashes.agentsMd, previousBlocks.agentsMd, forceFirstInjection),
+            skills: decideBlockStatus(currentBlockHashes.skills, previousBlocks.skills, forceFirstInjection),
         };
         const previousMode = previousBlocks.modePolicy as AgentMode | undefined;
 

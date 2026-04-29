@@ -443,6 +443,8 @@ export interface SessionContextBlocksState {
     payloads?: string;
     /** sha256-16 of the AGENTS.md file content at the project root (undefined when the file does not exist) */
     agentsMd?: string;
+    /** sha256-16 of the skills catalog (name + description for every registered skill) */
+    skills?: string;
 }
 
 /**

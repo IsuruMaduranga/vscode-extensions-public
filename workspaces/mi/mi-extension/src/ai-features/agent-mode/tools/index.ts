@@ -73,6 +73,12 @@ export {
     getAvailableContexts,
 } from './context_tools';
 
+// Export skill tools (invoke_skill)
+export {
+    createInvokeSkillExecute,
+    createInvokeSkillTool,
+} from './skill_tools';
+
 // Export project tools
 export {
     // Execute function creators

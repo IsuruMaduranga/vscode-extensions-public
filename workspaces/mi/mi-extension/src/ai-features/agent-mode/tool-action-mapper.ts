@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { MANAGE_CONNECTOR_TOOL_NAME, ASK_USER_TOOL_NAME, BUILD_AND_DEPLOY_TOOL_NAME, CONNECTOR_TOOL_NAME, CONTEXT_TOOL_NAME, CREATE_DATA_MAPPER_TOOL_NAME, ENTER_PLAN_MODE_TOOL_NAME, EXIT_PLAN_MODE_TOOL_NAME, FILE_EDIT_TOOL_NAME, FILE_GLOB_TOOL_NAME, FILE_GREP_TOOL_NAME, FILE_READ_TOOL_NAME, FILE_WRITE_TOOL_NAME, GENERATE_DATA_MAPPING_TOOL_NAME, SERVER_MANAGEMENT_TOOL_NAME, SUBAGENT_TOOL_NAME, TODO_WRITE_TOOL_NAME, VALIDATE_CODE_TOOL_NAME, BASH_TOOL_NAME, KILL_TASK_TOOL_NAME, TASK_OUTPUT_TOOL_NAME, WEB_SEARCH_TOOL_NAME, WEB_FETCH_TOOL_NAME, DEEPWIKI_ASK_QUESTION_TOOL_NAME, READ_SERVER_LOGS_TOOL_NAME, TOOL_LOAD_TOOL_NAME } from './tools/types';
+import { MANAGE_CONNECTOR_TOOL_NAME, ASK_USER_TOOL_NAME, BUILD_AND_DEPLOY_TOOL_NAME, CONNECTOR_TOOL_NAME, CONTEXT_TOOL_NAME, CREATE_DATA_MAPPER_TOOL_NAME, ENTER_PLAN_MODE_TOOL_NAME, EXIT_PLAN_MODE_TOOL_NAME, FILE_EDIT_TOOL_NAME, FILE_GLOB_TOOL_NAME, FILE_GREP_TOOL_NAME, FILE_READ_TOOL_NAME, FILE_WRITE_TOOL_NAME, GENERATE_DATA_MAPPING_TOOL_NAME, SERVER_MANAGEMENT_TOOL_NAME, SUBAGENT_TOOL_NAME, TODO_WRITE_TOOL_NAME, VALIDATE_CODE_TOOL_NAME, BASH_TOOL_NAME, KILL_TASK_TOOL_NAME, TASK_OUTPUT_TOOL_NAME, WEB_SEARCH_TOOL_NAME, WEB_FETCH_TOOL_NAME, DEEPWIKI_ASK_QUESTION_TOOL_NAME, READ_SERVER_LOGS_TOOL_NAME, TOOL_LOAD_TOOL_NAME, INVOKE_SKILL_TOOL_NAME } from './tools/types';
 /**
  * Tool action states for UI display
  */
@@ -85,6 +85,18 @@ export function getToolAction(toolName: string, toolResult?: any, toolInput?: an
 
         case CONTEXT_TOOL_NAME:
             return { loading: 'loading deep context', completed: 'loaded deep context', failed: 'failed to load deep context' };
+
+        case INVOKE_SKILL_TOOL_NAME: {
+            const skillName = typeof toolInput?.skill_name === 'string' ? toolInput.skill_name.trim() : '';
+            if (skillName.length > 0) {
+                return {
+                    loading: `loading skill ${skillName}`,
+                    completed: `loaded skill ${skillName}`,
+                    failed: `failed to load skill ${skillName}`,
+                };
+            }
+            return { loading: 'loading skill', completed: 'loaded skill', failed: 'failed to load skill' };
+        }
 
         case MANAGE_CONNECTOR_TOOL_NAME: {
             // Extract operation and artifact ids from tool input. The model
