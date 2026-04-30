@@ -96,14 +96,19 @@ export function AddConnection(props: AddConnectionProps) {
         };
 
         (async () => {
-            setIsLoading(true);
-            await fetchArtifacts();
-            // Fetch connections and form data for connection creation
             if (!props.connectionName) {
+                // Create mode: gate the form on schema loading
+                setIsLoading(true);
+                await fetchArtifacts();
                 await fetchConnections();
                 await fetchFormData();
+                setIsLoading(false);
+            } else {
+                // Edit mode: fetch artifacts for validation only — do NOT toggle isLoading
+                // here because the edit useEffect owns the loading gate and toggling it
+                // would unmount FormGenerator mid-render, losing effectiveDriverDep state.
+                await fetchArtifacts();
             }
-            setIsLoading(false);
         })();
     }, [connectionType]);
 
@@ -125,6 +130,7 @@ export function AddConnection(props: AddConnectionProps) {
                     documentUri: props.path, connectorName: connectionFound.connectorName
                 });
                 props.connector.name = connector.name;
+                props.connector.artifactId = connector.artifactId;
 
                 const connectionSchema = await rpcClient.getMiDiagramRpcClient().getConnectionSchema({
                     documentUri: props.path
@@ -133,32 +139,9 @@ export function AddConnection(props: AddConnectionProps) {
                 setConnectionName(props.connectionName);
                 setFormData(connectionSchema);
 
-                // Load driver overrides from connector-config.json to pre-populate driver fields
-                const connectorArtifactId = connector?.artifactId ?? connector?.name ?? props.connector?.name ?? '';
-                const ct = connectionFound.connectionType;
-                let driverParamValues: Array<{ name: string; value: string }> = [];
-                if (connectorArtifactId && ct) {
-                    try {
-                        const depResponse = await rpcClient.getMiDiagramRpcClient().getConnectorDependencies({
-                            connectorArtifactId,
-                        });
-                        const match = depResponse?.dependencies?.find(d =>
-                            d.connectionType?.toUpperCase() === ct.toUpperCase());
-                        if (match) {
-                            if (match.groupId) driverParamValues.push({ name: 'groupId', value: match.groupId });
-                            if (match.artifactId) driverParamValues.push({ name: 'artifactId', value: match.artifactId });
-                            const version = match.overriddenVersion ?? match.defaultVersion ?? '';
-                            if (version) driverParamValues.push({ name: 'version', value: version });
-                        }
-                    } catch (_) {
-                        // connector-config.json may not exist; fall back to empty driver fields
-                    }
-                }
-                setParams({ ...params, paramValues: generateParams(driverParamValues) });
-
                 reset({
                     name: props.connectionName,
-                    connectionType: connectionType
+                    connectionType: connectionFound.connectionType
                 });
 
                 // Populate form with existing values (no uischema path)
@@ -171,7 +154,9 @@ export function AddConnection(props: AddConnectionProps) {
             }
         }
         (async () => {
+            setIsLoading(true);
             await fetchFormData();
+            setIsLoading(false);
         })();
     }, [props.connectionName]);
 
@@ -221,10 +206,8 @@ export function AddConnection(props: AddConnectionProps) {
             console.error("Errors in saving connection form", errors);
         }
 
-        // Fill the values — driver coordinate fields are managed via connector-config.json, not local entries
-        const DRIVER_FIELDS = new Set(['groupId', 'artifactId', 'version', 'driverPath']);
         Object.keys(values).forEach((key: string) => {
-            if ((key !== 'configRef' && key !== 'connectionType' && key !== 'connectionName' && !DRIVER_FIELDS.has(key)) && values[key] != null) {
+            if ((key !== 'configRef' && key !== 'connectionType' && key !== 'connectionName') && values[key] != null) {
                 if (typeof values[key] === 'object' && values[key] !== null) {
                     if (Array.isArray(values[key])) {
                         // Handle param manager input type
@@ -290,25 +273,6 @@ export function AddConnection(props: AddConnectionProps) {
             connectionType: connectionType
         });
 
-        // If the user specified driver coordinates, persist them to connector-config.json.
-        const driverGroupId: string = values.groupId?.trim?.() ?? '';
-        const driverArtifactId: string = values.artifactId?.trim?.() ?? '';
-        const driverVersion: string = values.version?.trim?.() ?? '';
-        const connectorArtifactId: string = props.connector?.artifactId ?? props.connector?.name ?? '';
-        if (connectionType && connectorArtifactId && (driverGroupId || driverArtifactId || driverVersion)) {
-            try {
-                await rpcClient.getMiDiagramRpcClient().updateConnectorDependencyOverride({
-                    connectorArtifactId,
-                    connectionType,
-                    groupId: driverGroupId || undefined,
-                    artifactId: driverArtifactId || undefined,
-                    version: driverVersion || undefined,
-                });
-            } catch (e) {
-                console.warn('Failed to persist driver coordinates to connector-config.json:', e);
-            }
-        }
-
         if (props.isPopup) {
             rpcClient.getMiVisualizerRpcClient().openView({
                 type: POPUP_EVENT_TYPE.CLOSE_VIEW,
@@ -330,11 +294,8 @@ export function AddConnection(props: AddConnectionProps) {
         const connectorTag = localEntryTag.ele(`${props.connector.name}.init`);
         connectorTag.ele('name', connectionName);
 
-        const DRIVER_FIELDS = new Set(['groupId', 'artifactId', 'version', 'driverPath']);
         params.paramValues.forEach(param => {
-            if (!DRIVER_FIELDS.has(param.key)) {
-                connectorTag.ele(param.key).txt(param.value);
-            }
+            connectorTag.ele(param.key).txt(param.value);
         });
 
         const modifiedXml = template.end({ prettyPrint: true, headless: true });
@@ -351,28 +312,6 @@ export function AddConnection(props: AddConnectionProps) {
             filePath: props.connectionName ? props.path : "",
             connectionType: connectionType
         });
-
-        // Persist driver coordinates to connector-config.json if provided.
-        // Non-fatal: connection is already saved; a failure here only means driver pinning is lost.
-        const driverParam = (key: string) =>
-            params.paramValues.find(p => p.key === key)?.value?.trim() ?? '';
-        const driverGroupId = driverParam('groupId');
-        const driverArtifactId = driverParam('artifactId');
-        const driverVersion = driverParam('version');
-        const connectorArtifactId: string = props.connector?.artifactId ?? props.connector?.name ?? '';
-        if (connectionType && connectorArtifactId && (driverGroupId || driverArtifactId || driverVersion)) {
-            try {
-                await rpcClient.getMiDiagramRpcClient().updateConnectorDependencyOverride({
-                    connectorArtifactId,
-                    connectionType,
-                    groupId: driverGroupId || undefined,
-                    artifactId: driverArtifactId || undefined,
-                    version: driverVersion || undefined,
-                });
-            } catch (e) {
-                console.warn('Failed to persist driver coordinates to connector-config.json:', e);
-            }
-        }
 
         if (props.isPopup) {
             rpcClient.getMiVisualizerRpcClient().openView({

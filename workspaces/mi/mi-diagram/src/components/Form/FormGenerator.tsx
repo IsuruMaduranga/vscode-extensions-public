@@ -291,6 +291,7 @@ export function FormGenerator(props: FormGeneratorProps) {
     const [effectiveDriverDep, setEffectiveDriverDep] = useState<ConnectorEffectiveDependency | null>(null);
 
     useEffect(() => {
+        let cancelled = false;
         const loadEffectiveDriver = async () => {
             const cn = connectorArtifactIdProp ?? formData?.connectorName ?? connectorName?.replace(/\s/g, '');
             const ct = connectionName;
@@ -299,6 +300,7 @@ export function FormGenerator(props: FormGeneratorProps) {
                 const resp = await rpcClient.getMiDiagramRpcClient().getConnectorDependencies({
                     connectorArtifactId: cn,
                 });
+                if (cancelled) return;
                 const dep = resp?.dependencies?.find(
                     d => d.connectionType?.toLowerCase() === ct.toLowerCase()
                 );
@@ -308,6 +310,7 @@ export function FormGenerator(props: FormGeneratorProps) {
             }
         };
         loadEffectiveDriver();
+        return () => { cancelled = true; };
     }, [connectorArtifactIdProp, formData?.connectorName, connectorName, connectionName]);
 
 
