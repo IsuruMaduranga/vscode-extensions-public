@@ -60,6 +60,10 @@ export const BALLERINA_DIST_BASE_URL: string = process.env.BALLERINA_DIST_BASE_U
 export const CACHED_FOLDER = path.join(os.homedir(), '.wso2-mi');
 export const INTEGRATION_PROJECT_DEPENDENCIES_DIR = 'integration-project-dependencies';
 
+export function isWso2IntegratorRuntime(): boolean {
+    return process.env.WSO2_INTEGRATOR_RUNTIME === 'true';
+}
+
 let ballerinaOutputChannel: vscode.OutputChannel | undefined;
 
 export async function setupEnvironment(projectUri: string, isOldProject: boolean): Promise<boolean> {
@@ -1092,7 +1096,7 @@ export async function buildBallerinaModule(projectPath: string) {
     const MIN_REQUIRED_UPDATE = 13;
 
     // Try the bundled Ballerina distribution first when running inside the WSO2 Integrator IDE.
-    if (process.env.WSO2_INTEGRATOR_RUNTIME === 'true') {
+    if (isWso2IntegratorRuntime()) {
         const wiBalHome = process.env.WSO2_INTEGRATOR_BALLERINA_HOME;
         if (wiBalHome) {
             const balExecutable = process.platform === 'win32' ? 'bal.bat' : 'bal';
