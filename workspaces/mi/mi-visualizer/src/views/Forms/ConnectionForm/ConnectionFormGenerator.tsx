@@ -97,16 +97,15 @@ export function AddConnection(props: AddConnectionProps) {
 
         (async () => {
             if (!props.connectionName) {
-                // Create mode: gate the form on schema loading
                 setIsLoading(true);
-                await fetchArtifacts();
-                await fetchConnections();
-                await fetchFormData();
-                setIsLoading(false);
+                try {
+                    await fetchArtifacts();
+                    await fetchConnections();
+                    await fetchFormData();
+                } finally {
+                    setIsLoading(false);
+                }
             } else {
-                // Edit mode: fetch artifacts for validation only — do NOT toggle isLoading
-                // here because the edit useEffect owns the loading gate and toggling it
-                // would unmount FormGenerator mid-render, losing effectiveDriverDep state.
                 await fetchArtifacts();
             }
         })();
@@ -155,8 +154,11 @@ export function AddConnection(props: AddConnectionProps) {
         }
         (async () => {
             setIsLoading(true);
-            await fetchFormData();
-            setIsLoading(false);
+            try {
+                await fetchFormData();
+            } finally {
+                setIsLoading(false);
+            }
         })();
     }, [props.connectionName]);
 

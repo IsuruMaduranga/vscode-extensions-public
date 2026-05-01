@@ -506,7 +506,7 @@ export const consolidatedProjectPomContent = (projectName: string, groupID: stri
     `    </modules>`,
     `    <properties>`,
     `        <project.runtime.version>${miVersion}</project.runtime.version>`,
-    `        <car.plugin.version>5.4.13</car.plugin.version>`,
+    `        <car.plugin.version>${LATEST_CAR_PLUGIN_VERSION}</car.plugin.version>`,
     `        <maven.compiler.source>1.8</maven.compiler.source>`,
     `        <maven.compiler.target>1.8</maven.compiler.target>`,
     `        <is.consolidated.project>true</is.consolidated.project>`,
