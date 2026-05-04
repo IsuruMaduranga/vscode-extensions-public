@@ -107,6 +107,25 @@
             "properties": {
               "type": "local"
             }
+          },
+          {
+            "type": "mi",
+            "name": "MI: Remote Server Run and Debug",
+            "request": "launch",
+            "internalConsoleOptions": "openOnSessionStart",
+            "vmArgs": [],
+            "properties": {
+              "type": "remote",
+              "commandPort": 9005,
+              "eventPort": 9006,
+              "serverHost": "localhost",
+              "serverPort": 8290,
+              "serverReadinessPort": 9201,
+              "managementPort": 9164,
+              "managementUsername": "admin",
+              "managementPassword": "admin",
+              "connectionTimeoutInSecs": 10
+            }
           }
         ]
       }
@@ -200,6 +219,11 @@
           "default": "error",
           "description": "The verbosity of logging. The Order is off < error < warn < info < debug.",
           "scope": "window"
+        },
+        "MI.convertToConsolidatedProjectAfterMigration": {
+          "type": "boolean",
+          "default": false,
+          "description": "Convert the migrated projects to a consolidated project."
         }
       }
     },
@@ -301,6 +325,11 @@
         "title": "Open AI Panel",
         "category": "MI",
         "icon": "$(wand)"
+      },
+      {
+        "command": "MI.configureDefaultModelProvider",
+        "title": "Configure Default WSO2 Model Provider",
+        "category": "MI"
       },
       {
         "command": "MI.Open-runtime-service-view",
@@ -481,6 +510,11 @@
         "icon": "$(trash)"
       },
       {
+        "command": "MI.project-explorer.project-delete",
+        "title": "Remove Project from Workspace",
+        "icon": "$(trash)"
+      },
+      {
         "command": "MI.manage-registry-property",
         "title": "Manage Properties",
         "icon": "$(add)"
@@ -503,6 +537,11 @@
         "command": "MI.show.source",
         "title": "Show Source",
         "icon": "$(code)",
+        "category": "MI"
+      },
+      {
+        "command": "MI.convert.to.consolidated",
+        "title": "Convert Workspace to Consolidated Project",
         "category": "MI"
       },
       {
@@ -922,9 +961,12 @@
           "key": "delete"
         },
         {
+          "command": "MI.project-explorer.project-delete",
+          "when": "view == MI.project-explorer && viewItem == project"
+        },
+        {
           "command": "MI.manage-registry-property",
-          "when": "view == MI.project-explorer && (viewItem == resource || viewItem == registry-with-metadata || viewItem == registry-without-metadata)",
-          "key": "add-registry-property"
+          "when": "view == MI.project-explorer && (viewItem == resource || viewItem == registry-with-metadata || viewItem == registry-without-metadata)"
         },
         {
           "command": "MI.project-explorer.markAsDefaultSequence",
@@ -1026,6 +1068,7 @@
     "postbuild": "pnpm run copyVSIX"
   },
   "devDependencies": {
+    "@ai-sdk/devtools": "0.0.6",
     "@playwright/test": "1.55.1",
     "@types/mocha": "10.0.1",
     "@types/node": "22.15.21",
@@ -1052,12 +1095,16 @@
     "yaml": "2.8.3"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "2.0.35",
+    "@ai-sdk/amazon-bedrock": "4.0.4",
+    "@ai-sdk/anthropic": "3.0.46",
+    "@anthropic-ai/tokenizer": "0.0.4",
     "@apidevtools/json-schema-ref-parser": "12.0.2",
     "@babel/core": "7.27.1",
     "@babel/plugin-transform-typescript": "7.27.1",
     "@iarna/toml": "2.2.5",
-    "ai": "5.0.76",
+    "@langfuse/otel": "4.5.1",
+    "@opentelemetry/sdk-node": "0.210.0",
+    "ai": "6.0.94",
     "@types/fs-extra": "11.0.4",
     "@types/handlebars": "4.1.0",
     "@types/json-schema": "7.0.15",
@@ -1074,27 +1121,32 @@
     "@wso2/playwright-vscode-tester": "workspace:*",
     "adm-zip": "0.5.16",
     "axios": "1.15.0",
+    "canonicalize": "2.1.0",
     "copyfiles": "2.4.1",
     "cors-anywhere": "0.4.4",
     "dotenv": "16.5.0",
     "fast-xml-parser": "5.2.3",
     "find-process": "1.4.10",
     "fs-extra": "11.3.0",
+    "glob": "11.1.0",
     "handlebars": "4.7.9",
     "json-schema": "0.4.0",
     "json-schema-to-ts": "3.1.1",
     "jsonix": "3.0.0",
     "jwt-decode": "4.0.0",
+    "langfuse": "3.38.6",
     "lodash": "4.17.23",
     "mustache": "4.2.0",
     "node-fetch": "3.3.2",
     "node-loader": "2.1.0",
+    "pdf-lib": "1.17.1",
     "portfinder": "1.0.37",
     "recast": "0.23.11",
     "tmp": "0.2.4",
     "to-json-schema": "0.2.5",
     "tree-kill": "1.2.2",
     "unzipper": "0.12.3",
+    "unique-names-generator": "4.7.1",
     "upath": "2.0.1",
     "uuid": "11.1.0",
     "vscode-debugadapter": "1.51.0",
