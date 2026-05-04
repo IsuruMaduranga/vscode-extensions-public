@@ -47,10 +47,10 @@ export interface RadioButtonGroupProps extends ComponentProps<"input"> {
 }
 
 export const RadioButtonGroup = React.forwardRef<HTMLInputElement, RadioButtonGroupProps>((props, ref) => {
-    const { id, className, label, options, orientation, sx, ...rest } = props;
+    const { id, className, label, options = [], orientation, sx, ...rest } = props;
 
     return (
-        <RadioButtonContainer id={id} className={className} sx={sx} {...rest} >
+        <RadioButtonContainer id={id} className={className} sx={sx}>
             <div style={{color: "var(--vscode-editor-foreground	)"}}>
                 <label htmlFor={`${id}-label`}>{label}</label>
             </div>
@@ -59,12 +59,12 @@ export const RadioButtonGroup = React.forwardRef<HTMLInputElement, RadioButtonGr
                 orientation={orientation}
                 {...rest}
             >
-                {options.map((option, index) => (
+                {options.map(option => (
                     <VSCodeRadio
-                        key={index}
+                        key={String(option.value)}
                         id={option.id}
-                        value={option.value}
-                        disabled={option.disabled}
+                        value={String(option.value)}
+                        disabled={option.disabled || undefined}
                     >
                         {option.content}
                     </VSCodeRadio>

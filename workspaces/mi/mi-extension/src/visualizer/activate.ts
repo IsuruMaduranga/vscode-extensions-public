@@ -35,7 +35,7 @@ import { AiPanelWebview } from '../ai-features/webview';
 import { MiDiagramRpcManager } from '../rpc-managers/mi-diagram/rpc-manager';
 import { log, outputChannel } from '../util/logger';
 import { CACHED_FOLDER, INTEGRATION_PROJECT_DEPENDENCIES_DIR, isConsolidatedProject } from '../util/onboardingUtils';
-import { formatAndSavePomDocument, extractZip, getHash, zipProjectFolder } from '../util/fileOperations';
+import { extractZip, formatAndSavePomDocument, getHash, zipProjectFolder } from '../util/fileOperations';
 import { MILanguageClient } from '../lang-client/activator';
 import { ConflictingDependency } from '../lang-client/ExtendedLanguageClient';
 import { askForProject } from '../util/workspace';
@@ -154,7 +154,12 @@ export function activateVisualizer(context: vscode.ExtensionContext, firstProjec
                             directory: path.dirname(args.path),
                             name: path.basename(args.path),
                             open: args.open ?? false,
-                            miVersion: args.miVersion ?? "4.6.0"
+                            miVersion: args.miVersion ?? "4.6.0",
+                            isConsolidatedProject: args.isConsolidatedProject ?? false,
+                            subProjects: args.subProjects ?? [],
+                            groupID: args.groupId ?? "com.microintegrator.projects",
+                            artifactID: args.artifactId ?? args.name,
+                            version: args.version ?? "1.0.0"
                         }
                     );
                     await createSettingsFile(args);
